@@ -4,11 +4,12 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+		<title>玩转 AST</title>
 
 		<link rel="stylesheet" href="dist/reset.css">
 		<link rel="stylesheet" href="dist/reveal.css">
 		<link rel="stylesheet" href="dist/theme/black.css">
+		<link rel="stylesheet" href="css/custom.css">
 
 		<!-- Theme used for syntax highlighted code -->
 		<link rel="stylesheet" href="plugin/highlight/monokai.css">
@@ -16,8 +17,1245 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+					<h1>玩转 AST</h1>
+					<p>构建自己的代码分析和代码重写工具</p>
+					<p>黄志敏</p>
+					<p><a href="https://github.com/flyerhzm" target="_blank">@flyerhzm</a></p>
+				</section>
+				<section>
+					<h2>什么是 AST ？</h2>
+					<p>抽象语法树（Abstract Syntax Tree）</p>
+					<aside class="notes">
+						AST（抽象语法树）是在编程语言处理中常用的一种数据结构。它是源代码的抽象表示，用于在计算机程序的语法结构上进行分析和处理。
+						<br/>
+						在计算机编程中，源代码是人类可读的形式，但计算机需要将其转换为能够理解和处理的形式。这个转换过程涉及将源代码解析成更结构化、更抽象的表示，这就是抽象语法树。
+						<br/>
+						抽象语法树是源代码的一种层次化表示，它通过使用树形结构来表示代码的语法结构。每个节点代表代码中的一个语法元素，如变量、函数、运算符、控制流语句等。
+					</aside>
+				</section>
+				<section>
+					<table data-fullscreen="true">
+						<tr>
+							<td>
+								<pre><code class="hljs ruby" data-trim>
+									class RubyChinaConf
+										def location
+											'Shanghai'
+										end
+
+										def year
+											2023
+										end
+									end
+								</code></pre>
+							</td>
+							<td>
+								<pre><code class="hljs ruby" data-trim>
+									(class
+										(const nil :RubyChinaConf) nil
+										(begin
+											(def :location
+												(args)
+												(str "Shanghai"))
+											(def :year
+												(args)
+												(int 2023))))
+								</code></pre>
+							</td>
+						</tr>
+					</table>
+				</section>
+				<section>
+					<img src="img/ast-example.png" />
+				</section>
+				<section>
+					<h2>AST 的用途</h2>
+					<ul>
+						<li>编译器</li>
+						<li>解释器</li>
+						<li><strong>代码静态分析工具</strong></li>
+					</ul>
+					<aside class="notes">
+						AST 在编程语言处理中有着广泛的应用，例如编译器、解释器、代码静态分析工具等都需要使用 AST 来理解和处理代码。
+						<br/>
+						AST 使得代码的分析、优化和重构等任务更容易实现，因为它提供了一个结构化的视图来遍历和操作代码的语法结构。
+					</aside>
+				</section>
+				<section>
+					<h2>为什么用 AST?</h2>
+					<ul>
+						<li>精确的查找</li>
+					</ul>
+					<pre><code class="hljs ruby" data-trim>
+						# match puts
+						puts "hello world"
+						puts"hello world"
+						puts("hello world")
+						puts(
+							"hello world"
+						)
+						puts\
+							"hello world"
+					</code></pre>
+				</td>
+				<td>
+					<pre><code class="hljs ruby" data-trim>
+						# not match puts
+						'puts "hello world"'
+						<<~HEREDOC
+							puts "hello world"
+						HEREDOC
+						custom_puts "hello world"
+					</code></pre>
+				</section>
+				<section>
+					<h2>为什么用 AST?</h2>
+					<ul>
+						<li>实现复杂的查找替换</li>
+						<ul>
+							<li>查找 hash 中健值对一致的并删除值</li>
+							<li>查找 hash rocket 语法并替换为新的 hash 语法</li>
+							<li>查找 minitest 的没有调用 super 的 setup 方法并插入 super 语句</li>
+						</ul>
+					</ul>
+				</section>
+				<section>
+					<h2>哪些 Ruby 工具使用 AST ？</h2>
+					<img src="img/parser-tools.png" />
+					<aside class="notes">
+						 reek - code smell
+						 <br/>
+						 flog - 代码复杂度
+						 <br/>
+						 flay - 相似的代码
+					</aside>
+				</section>
+				<section>
+					<h2>Formatter 如何工作 ？</h2>
+				</section>
+				<section>
+					<img src="img/ast-example-1.png" />
+					<pre><code class="hljs ruby" data-trim>
+						class RubyChinaConf
+						  # body
+						end
+					</code></pre>
+					<aside class="notes">
+						遍历 AST，遇到 Node 生成对应的代码
+					</aside>
+				</section>
+				<section>
+					<img src="img/ast-example-2.png" />
+					<pre><code class="hljs ruby" data-trim>
+						class RubyChinaConf
+							def location
+								'Shanghai'
+							end
+						end
+					</code></pre>
+					<aside class="notes">
+						预设规则，缩进，单引号，双引号
+					</aside>
+				</section>
+				<section>
+					<img src="img/ast-example-3.png" />
+					<pre><code class="hljs ruby" data-trim>
+						class RubyChinaConf
+							def location
+								'Shanghai'
+							end
+
+							def year
+								2023
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>Prettier</h2>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						[
+							group([
+								group(["class ", "RubyChinaConf"]),
+								indent([
+									hardline,
+									group([
+										group([
+											group(["def ", "location", group([])]),
+											indent([hardline, group(["'", "Shanghai", "'"])]),
+											hardline,
+											"end",
+										]),
+										hardline,
+										hardline,
+										group([
+											group(["def ", "year", group([])]),
+											indent([hardline, group("2023")]),
+											hardline,
+											"end",
+										]),
+									]),
+								]),
+								hardline,
+								"end",
+							]),
+							hardline,
+						]
+					</code></pre>
+					<aside class="notes">
+						代码长度 80 / 120
+						<br/>
+						group 是一个用于包装表达式的标记，它指示 Prettier 将其内容视为一个整体，如果可能的话，尽量保持在同一行。
+						<br/>
+						indent 是用于控制代码缩进的标记。它指示 Prettier 在格式化代码时，将代码块缩进到正确的位置，以保持代码的层次结构和可读性。
+						<br/>
+						hardline 是一个表示强制换行的标记。它类似于一个显式的换行符，用于在特定的位置强制插入换行。
+						<br/>
+						softline 是一个表示可选换行的标记。它用于指示代码可以在这里换行，但不强制要求。Prettier 将根据上下文决定是否在此处插入换行。
+					</aside>
+				</section>
+				<section>
+					<h2>Linter 如何工作 ？</h2>
+					<aside class="notes">
+						不带修复
+						带修复
+					</aside>
+				</section>
+				<section>
+					<h2>案例</h2>
+					<ul>
+						<li>rails_best_practices</li>
+						<li>synvert</li>
+					</ul>
+				</section>
+				<section>
+					<h2>rails_best_practices</h2>
+					<img src="img/rails_best_practices_output.png" />
+					<aside class="notes">
+						注册 监听
+						类似 DOM 事件
+					</aside>
+				</section>
+				<section>
+					<h2>记录 model 和 association</h2>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						# app/models/*.rb
+						add_callback :start_class do |node|
+							@klass = node.class_name.to_s
+						end
+
+						add_callback :start_command do |node|
+							if node.message.to_s == 'belongs_to'
+								association_name = node.arguments.all.first.to_s
+								add_association(@klass, association_name)
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>记录 table 和 index</h2>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						# db/schema.rb
+						add_callback :start_command do |node|
+							if node.message.to_s == 'add_index'
+								table_name = node.arguments.all.first.to_s
+								index_column = node.arguments.all[1].to_object
+								@index_columns[table_name] << index_column
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>检查遗漏的 index</h2>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						add_callback :after_check do
+							associations.each do |klass, association_name|
+								unless @index_columns[klass.table_name].include?(association_name.column_name)
+									add_error "always add db index (#{klass.table_name} => #{association_name.column_name})",
+														table_node.file, table_node.line_number
+								end
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>synvert</h2>
+					<pre><code class="hljs ruby" data-trim>
+						Synvert::Rewriter.new 'factory_bot', 'use_short_syntax' do
+							within_files '**/*.rb' do
+								find_node '.send[receiver=FactoryBot][message in (create build build_stubbed attributes_for)]' do
+									delete :receiver, :dot
+								end
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<img src="img/synvert-demo1.png" width="40%" />
+					&nbsp;
+					&nbsp;
+					<img src="img/synvert-demo2.png" width="40%" />
+				</section>
+				<section>
+					<h2>源代码转换成 AST</h2>
+					<br/>
+					<pre data-center="true">
+------------
+| AST Node |
+------------
+/|\
+|
+---------------
+| Source Code |
+---------------
+					</pre>
+					<aside class="notes">
+						ripper
+						parser
+						ruby_parser
+					</aside>
+				</section>
+				<section>
+					<h2>AST Node 包含</h2>
+					<ul>
+						<li>node type</li>
+						<li>children</li>
+						<li>location (start, end, line, column)</li>
+						<li>source</li>
+					</ul>
+				</section>
+				<section>
+					<h2>增加 attribute</h2>
+					<ul>
+						<li>ripper + syntax_tree + syntax_tree_ext</li>
+						<li>parser + parser_node_ext</li>
+					</ul>
+					<pre><code class="hljs ruby" data-trim>
+						code = 'FactoryBot.create(:user)'
+						node = Parser::CurrentRuby.parse(code)
+
+						node.children[0]
+						node.receiver
+
+						node.children[1]
+						node.message
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 AST Node</h2>
+					<a href="https://github.com/xinminlabs/node-query-ruby">https://github.com/xinminlabs/node-query-ruby</a>
+					<br/>
+					<pre data-center>
+--------------
+| Node Query |
+--------------
+/|\
+|
+------------
+| AST Node |
+------------
+/|\
+|
+---------------
+| Source Code |
+---------------
+					</pre>
+				</section>
+				<section>
+					<h2>CSS</h2>
+					<pre><code class="hljs html" data-trim>
+						/* HTML */
+						<div class="item" data-type="image">
+							<img src="https://example.com/image.png" />
+						</div>
+					</code></pre>
+					<pre><code class="hljs css" data-trim>
+						/* CSS */
+						.item[data-type='image']
+					</code></pre>
+				</section>
+				<section>
+					<h2>NQL (Node Query Language)</h2>
+					<pre><code class="hljs ruby" data-trim>
+						# Ruby Code
+						FactoryBot.create(:user)
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						# AST Node
+						(send
+							(const nil :FactoryBot) :create
+							(sym :user))
+					</code></pre>
+					<pre><code class="hljs" data-trim>
+						# NQL
+						.send[receiver=FactoryBot][message=create]
+					</code></pre>
+				</section>
+				<section>
+					<h2>rex & racc (lex & yacc)</h2>
+					<aside class="notes">
+						Lex 和 Yacc 是 Unix 系统上经典的编译器开发工具，它们被用于生成编译器或解释器中的词法分析器（Lex）和语法分析器（Yacc）。
+						<br/>
+						先使用 Lex 定义词法规则，将源代码拆分为 Tokens。然后使用 Yacc 定义语法规则，将 Tokens 组织成 AST 或其他中间表示形式。最后，根据生成的词法分析器和语法分析器，可以将输入的源代码转换为抽象语法树，供后续的代码生成、优化和执行阶段使用。
+						<br/>
+						Rex 用于构建词法分析器，而 Racc 用于构建语法分析器，从而实现完整的编译器前端。通过这些工具，开发者可以定义自定义编程语言或 DSL，并生成解析器来处理源代码。
+					</aside>
+				</section>
+				<section>
+					<h2>解析 node type</h2>
+					<br/>
+					<code>.send</code>
+				</section>
+				<section>
+					<pre><code class="hljs text" data-trim>
+						class NodeQueryLexer
+						macros
+							NODE_TYPE                /\.[a-zA-Z]+/
+						rules
+						# [:state]  pattern        [actions]
+												/\s+/
+												/#{NODE_TYPE}/ { [:tNODE_TYPE, text[1..]] }
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre><code class="hljs ruby" data-trim>
+						class NodeQueryParser
+							token tNODE_TYPE
+							rule
+								basic_selector
+									: tNODE_TYPE { Compiler::BasicSelector.new(node_type: val[0]) }
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						module Compiler
+							class BasicSelector
+								def initialize(node_type:)
+									@node_type = node_type
+								end
+
+								def query_nodes(node)
+									# iterate all child nodes,
+									# check if child node matches node_type
+								end
+
+								def match?(node)
+									@node_type.to_sym == NodeQuery.adapter.get_node_type(node)
+								end
+							end
+						end
+
+						selector = NodeQueryParser.new.parse(nql)
+						selector.query_nodes(node) # matching_nodes
+					</code></pre>
+				</section>
+				<section>
+					<h2>解析 attribute</h2>
+					<br/>
+					<code>.send[reciever=FactoryBot]</code>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs text" data-trim data-line-numbers="4-8,12-19">
+						class NodeQueryLexer
+						macros
+							NODE_TYPE                /\.[a-zA-Z]+/
+							OPEN_ATTRIBUTE           /\[/
+							CLOSE_ATTRIBUTE          /\]/
+							IDENTIFIER               /[@\*\-\.\w]*\w/
+							IDENTIFIER_VALUE         /[@\.\w!&:\?<>=]+/
+						rules
+						# [:state]  pattern                       [actions]
+												/\s+/
+												/#{NODE_TYPE}/                { [:tNODE_TYPE, text[1..]] }
+												/#{OPEN_ATTRIBUTE}/           { @state = :KEY; [:tOPEN_ATTRIBUTE, text] }
+						:KEY        /\s+/
+						:KEY        /=/                           { @state = :VALUE; [:tOPERATOR, '='] }
+						:KEY        /#{IDENTIFIER}/               { [:tKEY, text] }
+						:VALUE      /\s+/
+						:VALUE      /#{CLOSE_ATTRIBUTE}/          { @state = nil; [:tCLOSE_ATTRIBUTE, text] }
+						:VALUE      /#{IDENTIFIER_VALUE}/         { [:tIDENTIFIER_VALUE, text] }
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim data-line-numbers="2,6-13">
+						class NodeQueryParser
+							token tNODE_TYPE tKEY tIDENTIFIER_VALUE tOPEN_ATTRIBUTE tCLOSE_ATTRIBUTE tOPERATOR
+							rule
+								basic_selector
+									: tNODE_TYPE { Compiler::BasicSelector.new(node_type: val[0]) }
+									| tNODE_TYPE attribute { Compiler::BasicSelector.new(node_type: val[0], attribute: val[1]) }
+
+								attribute
+									: tOPEN_ATTRIBUTE tKEY tOPERATOR value tCLOSE_ATTRIBUTE { Compiler::Attribute.new(key: val[1], value: val[3], operator: val[2]) }
+
+								value
+									: tIDENTIFIER_VALUE { Compiler::Identifier.new(value: val[0]) }
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						module Compiler
+							class BasicSelector
+								def initialize(node_type:, attribute: nil)
+									@node_type = node_type
+									@attribute = attribute
+								end
+
+								def query_nodes(node)
+									# iterate all child nodes,
+									# check if child node matches node_type and attribute
+								end
+
+								def match?(node)
+									@node_type.to_sym == NodeQuery.adapter.get_node_type(node) && (!@attribute || @attribute.match?(node))
+								end
+							end
+
+							class Attribute
+								def initialize(key:, value:, operator: '=')
+									@key = key
+									@value = value
+									@operator = operator
+								end
+
+								def match?(node)
+									@value.match?(NodeQuery::Helper.get_target_node(node, @key), node, @operator)
+								end
+							end
+						end
+
+						selector = NodeQueryParser.new.parse(nql)
+						selector.query_nodes(node) # matching_nodes
+					</code></pre>
+				</section>
+				<section>
+					<h2>解析多个 attribute</h2>
+					<br/>
+					<code>.send[reciever=FactoryBot][message=create]</code>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim data-line-numbers="6-14">
+						class NodeQueryParser
+							token tNODE_TYPE tKEY tIDENTIFIER_VALUE tOPEN_ATTRIBUTE tCLOSE_ATTRIBUTE tOPERATOR
+							rule
+								basic_selector
+									: tNODE_TYPE { Compiler::BasicSelector.new(node_type: val[0]) }
+									| tNODE_TYPE attribute_list { Compiler::BasicSelector.new(node_type: val[0], attribute_list: val[1]) }
+
+								attribute_list
+									: attribute attribute_list { Compiler::AttributeList.new(attribute: val[0], rest: val[1]) }
+									| attribute { Compiler::AttributeList.new(attribute: val[0]) }
+
+								attribute
+									: tOPEN_ATTRIBUTE tKEY tOPERATOR value tCLOSE_ATTRIBUTE { Compiler::Attribute.new(key: val[1], value: val[3], operator: val[2]) }
+
+								value
+									: tIDENTIFIER_VALUE { Compiler::Identifier.new(value: val[0]) }
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>解析 value 类型</h2>
+					<br/>
+					<code>.send[arguments.first=:user][arguments.last=true]</code>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs text" data-trim data-line-numbers="8-16,27-35">
+						class NodeQueryLexer
+						macros
+							NODE_TYPE                /\.[a-zA-Z]+/
+							OPEN_ATTRIBUTE           /\[/
+							CLOSE_ATTRIBUTE          /\]/
+							IDENTIFIER               /[@\*\-\.\w]*\w/
+							IDENTIFIER_VALUE         /[@\.\w!&:\?<>=]+/
+							FALSE                    /false/
+							FLOAT                    /\-?\d+\.\d+/
+							INTEGER                  /\-?\d+/
+							NIL                      /nil/
+							SYMBOL                   /:[\w!\?<>=]+/
+							TRUE                     /true/
+							SINGLE_QUOTE_STRING      /'.*?'/
+							DOUBLE_QUOTE_STRING      /".*?"/
+						rules
+						# [:state]  pattern                       [actions]
+												/\s+/
+												/#{NODE_TYPE}/                { [:tNODE_TYPE, text[1..]] }
+												/#{OPEN_ATTRIBUTE}/           { @state = :KEY; [:tOPEN_ATTRIBUTE, text] }
+						:KEY        /\s+/
+						:KEY        /=/                           { @state = :VALUE; [:tOPERATOR, '='] }
+						:KEY        /#{IDENTIFIER}/               { [:tKEY, text] }
+						:VALUE      /\s+/
+						:VALUE      /#{CLOSE_ATTRIBUTE}/          { @state = nil; [:tCLOSE_ATTRIBUTE, text] }
+						:VALUE      /#{IDENTIFIER_VALUE}/         { [:tIDENTIFIER_VALUE, text] }
+						:VALUE      /#{NIL}/                      { [:tNIL, nil] }
+						:VALUE      /#{TRUE}/                     { [:tBOOLEAN, true] }
+						:VALUE      /#{FALSE}/                    { [:tBOOLEAN, false] }
+						:VALUE      /#{SYMBOL}/                   { [:tSYMBOL, text[1..-1].to_sym] }
+						:VALUE      /#{FLOAT}/                    { [:tFLOAT, text.to_f] }
+						:VALUE      /#{INTEGER}/                  { [:tINTEGER, text.to_i] }
+						:VALUE      /#{DOUBLE_QUOTE_STRING}/      { [:tSTRING, text[1...-1]] }
+						:VALUE      /#{SINGLE_QUOTE_STRING}/      { [:tSTRING, text[1...-1]] }
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim data-line-numbers="3,18-24">
+						class NodeQueryParser
+							token tNODE_TYPE tKEY tIDENTIFIER_VALUE tOPEN_ATTRIBUTE tCLOSE_ATTRIBUTE tOPERATOR
+										tBOOLEAN tFLOAT tINTEGER tNIL tSTRING tSYMBOL
+							rule
+								basic_selector
+									: tNODE_TYPE { Compiler::BasicSelector.new(node_type: val[0]) }
+									| tNODE_TYPE attribute_list { Compiler::BasicSelector.new(node_type: val[0], attribute_list: val[1]) }
+
+								attribute_list
+									: attribute attribute_list { Compiler::AttributeList.new(attribute: val[0], rest: val[1]) }
+									| attribute { Compiler::AttributeList.new(attribute: val[0]) }
+
+								attribute
+									: tOPEN_ATTRIBUTE tKEY tOPERATOR value tCLOSE_ATTRIBUTE { Compiler::Attribute.new(key: val[1], value: val[3], operator: val[2]) }
+
+								value
+									: tIDENTIFIER_VALUE { Compiler::Identifier.new(value: val[0]) }
+									| tBOOLEAN { Compiler::Boolean.new(value: val[0]) }
+									| tFLOAT { Compiler::Float.new(value: val[0]) }
+									| tINTEGER { Compiler::Integer.new(value: val[0])}
+									| tNIL { Compiler::Nil.new(value: val[0]) }
+									| tSTRING { Compiler::String.new(value: val[0]) }
+									| tSYMBOL { Compiler::Symbol.new(value: val[0]) }
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<h2>解析操作符</h2>
+					<br/>
+					<code>.send[arguments.size>0]</code>
+				</section>
+				<section>
+					<pre><code class="hljs text" data-trim>
+						class NodeQueryLexer
+						macros
+							OPERATOR                 /(\^=|\$=|\*=|!=|=~|!~|>=|<=|>|<|=|not includes|includes|not in|in)/i
+						rules
+						# [:state]  pattern        [actions]
+						# :KEY      /=/            { @state = :VALUE; [:tOPERATOR, '='] }
+						:KEY        /#{OPERATOR}/  { @state = :VALUE; [:tOPERATOR, text] }
+						end
+					</code></pre>
+					<aside class="notes">
+						更复杂
+						匹配数组和正则表达式
+						pseudo class
+						多个表达式
+
+						其实从源代码到 AST 的转换也是同样的原理
+					</aside>
+				</section>
+				<section>
+					<h2>查找 debug 代码</h2>
+					<pre><code class="hljs ruby" data-trim>
+						puts "hello world"
+						p current_user
+					</code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						'.send[receiver=nil][message IN (puts p)]'
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找参数是两个 string 的方法调用</h2>
+					<pre><code class="hljs ruby" data-trim>
+						'slug from title'.gsub(' ', '_')
+					</code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						'.send[message=gsub][arguments.size=2][arguments.0=.str][arguments.-1=.str]'
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 hash rocket 的 key</h2>
+					<pre><code class="hljs ruby" data-trim>
+						{ :foo => 'bar' }
+					</code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						%q{.pair[key=.sym][key=~/\A:([^'"]+)\z/]}
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 hash 的键值对是相同的</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="2,4">
+						some_method(
+							a: a,
+							b: b + 2,
+							c: c,
+							d: d + 4
+						)
+					</code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						'.pair[key="{{value}}"]'
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 minitest setup 方法中没有调用 super</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="2-4">
+						class TestMeme < Minitest::Test
+							def setup
+								do_something
+							end
+						end
+				  </code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						'.class[parent_class=Minitest::Test] .def[name=setup]:not_has(> .super)'
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 hash 的值</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="2">
+						render nothing: true
+						render nothing: true, status: :created
+				 </code></pre>
+					<pre><code class="hljs text" data-trim>
+						# NQL
+						'.hash[status_value!=nil]'
+					</code></pre>
+				</section>
+				<section>
+					<h2>替换源代码</h2>
+					<a href="https://github.com/xinminlabs/node-mutation-ruby">https://github.com/xinminlabs/node-mutation-ruby</a>
+					<br/>
+					<pre data-center>
+--------------    -----------------
+| Node Query |    | Node Mutation |
+--------------    -----------------
+|\¯¯           ¯¯/|
+\             /
+------------
+| AST Node |
+------------
+/|\
+|
+---------------
+| Source Code |
+---------------
+					</pre>
+					<aside class="notes">
+						一般有两种方法：
+						1. 直接在 AST 上修改，然后用类似 formatter 的工具重新生成源代码。直接，但是不灵活，生成的代码和原来的代码需要遵循一致的规则。
+						2. 通过 AST Node 获取源代码的位置信息，然后在源代码上修改。方便实现 sandbox 的功能，可以在实际修改之前查看需要修改的内容。
+					</aside>
+				</section>
+				<section>
+					<pre><code class="hljs text" data-trim>
+						before_filter :load_user
+						|-----------|
+									|
+								替换为 before_action # code[0...'before_filter'.length] = 'before_action'
+
+																				open('http://test.com')
+																			/|\
+																			 |
+																			插入 URI. # code[0...0] = 'URI.'
+
+																																	FactoryBot.create(:user)
+																																	|---------|
+																																			|
+																																		 删除 # code[0...'FactoryBot.'.length] = ''
+					</code></pre>
+				</section>
+				<section>
+					<h2>replace_with</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1|3">
+						errors[:base] = "author not present"
+
+						errors.add(:base, "author not present")
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						replace_with node, '{{receiver}}.add({{arguments.0}}, {{arguments.1}})'
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 0,
+							end: 'errors[:base] = "author not present"'.length,
+							new_code: '{{receiver}}.add({{arguments.0}}, {{arguments.1}})'
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>replace</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1-2|4-5">
+						class Post < ActiveRecord::Base
+						end
+
+						class Post < ApplicationRecord
+						end
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						replace node, :parent_class, with: 'ApplicationRecord'
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 'class Post < '.length,
+							end: 'class Post < ActiveRecord::Base'.length,
+							new_code: 'ApplicationRecord'
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>insert</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1|3">
+						open('http://test.com')
+
+						URI.open('http://test.com')
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						insert node, 'URI.', at: 'beginning'
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 0,
+							end: 0,
+							new_code: 'URI.'
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>prepend</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="2-4|8-11">
+						class TestMeme < Minitest::Test
+							def setup
+								do_something
+							end
+						end
+
+						class TestMeme < Minitest::Test
+							def setup
+								super
+								do_something
+							end
+						end
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						prepend node, 'super'
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: "class TestMeme < Minitest::Test\n  def setup\n    ".length,
+							end: "class TestMeme < Minitest::Test\n  def setup\n    ".length,
+							new_code: "super\n    "
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>append</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="2-4|8-11">
+						class TestMeme < Minitest::Test
+							def teardown
+								clean_something
+							end
+						end
+
+						class TestMeme < Minitest::Test
+							def teardown
+								clean_something
+								super
+							end
+						end
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						append node, 'super'
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: "class TestMeme < Minitest::Test\n  def teardown\n    clean_someting".length,
+							end: "class TestMeme < Minitest::Test\n  def teardown\n    clean_someting".length,
+							new_code: "\n    super"
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>delete</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1|3">
+						FactoryBot.create(:user)
+
+						create(:user)
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						delete node, :receiver, :dot
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 0,
+							end: 'FactoryBot.'.length,
+							new_code: ''
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>remove</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1-4|6">
+						puts(
+							'hello'\
+							'world'
+						)
+
+						# nothing
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						remove node
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 0,
+							end: "puts(\n  'hello'\\\n  'world'\n)".length,
+							new_code: ''
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>Hash node</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1|3">
+						after_commit :add_to_index_later, on: :create
+
+						after_create_commit :add_to_index_later
+					</code></pre>
+					<pre><code class="hljs ruby" data-trim>
+						replace node, :message, with: 'after_{{arguments.-1.on_value.to_value}}_commit'
+						delete node, 'arguments.-1.on_pair', and_comma: true
+					</code></pre>
+					<pre class="fragment"><code class="hljs ruby" data-trim>
+						[{
+							start: 0,
+							end: 'after_commit'.length,
+							new_code: 'after_{{arguments.-1.on_value.to_value}}_commit'
+						}, {
+							start: 'after_commit :add_to_index_later'.length,
+							end: 'after_commit :add_to_index_later, :on: :create'.length,
+							new_code: ''
+						}]
+					</code></pre>
+				</section>
+				<section>
+					<h2>查找 + 替换</h2>
+					<pre><code class="hljs ruby" data-trim data-line-numbers="1-4|6-8,10,12|6,9,11,13-14">
+						require 'parser/current'
+						require 'parser_node_ext'
+						require 'node_query'
+						require 'node_mutation'
+
+						source = "foo\nputs foo\n"
+						node = Parser::CurrentRuby.parse(source)
+						query = NodeQuery.new('.send[receiver=nil][message IN (p puts)]')
+						mutation = NodeMutation.new(source)
+						query.query_nodes(node).each do |matching_node|
+							mutation.remove(matching_node)
+						end
+						result = mutation.process
+						result.new_source # foo\n
+					</code></pre>
+				</section>
+				<section>
+					<h2>Synvert</h2>
+					<p><a href="https://synvert.net/" target="_blank">https://synvert.net/</a></p>
+					<ul>
+						<li>代码升级工具（比如 rails）</li>
+						<li>代码自动重写工具</li>
+						<li>基于 AST 的查找替换工具</li>
+					</ul>
+					<aside class="notes">
+						基于 snippet，方便分享和扩展
+					</aside>
+				</section>
+				<section>
+					<pre data-center>
+--------------------     ---------------                         .
+| Synvert Snippets | --- | Synvert CLI |                         .
+--------------------     ---------------                         .
+/|\
+|
+----------------
+| Synvert Core |
+----------------
+¯¯/|           |\¯¯
+/               \
+--------------    -----------------
+| Node Query |    | Node Mutation |
+--------------    -----------------
+|\¯¯           ¯¯/|
+\             /
+------------
+| AST Node |
+------------
+/|\
+|
+---------------
+| Source Code |
+---------------
+					</pre>
+					<aside class="notes">
+						实际开发是反过来的
+					</aside>
+				</section>
+				<section>
+					<pre><code class="hljs ruby" data-trim>
+						Synvert::Rewriter.new 'ruby', 'remove_debug_code' do
+							within_files Synvert::ALL_RUBY_FILES do
+								find_node '.send[receiver=nil][message IN (puts p)]' do
+									remove
+								end
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						Synvert::Rewriter.new 'rails', 'convert_dynamic_finders' do
+							configure(parser: Synvert::PARSER_PARSER)
+
+							helper_method :dynamic_finder_to_hash do |prefix|
+								# convert 'email_and_active(email, true)' to 'email: email, active: true'
+							end
+
+							if_gem 'rails', '>= 3.0'
+
+							within_files Synvert::ALL_RUBY_FILES + Synvert::ALL_RAKE_FILES do
+								# find_all_by_email_and_active(email, true) => where(email: email, active: true)
+								with_node node_type: 'send', message: /^find_all_by_/ do
+									hash_params = dynamic_finder_to_hash('find_all_by_')
+									if hash_params
+										replace :message, with: 'where'
+										replace :arguments, with: hash_params
+									end
+								end
+					</code></pre>
+				</section>
+				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+								# find_last_by_email_and_active(email, true) => where(email: email, active: true).last
+								with_node node_type: 'send', message: /^find_last_by_/ do
+									hash_params = dynamic_finder_to_hash('find_last_by_')
+									if hash_params
+										replace :message, with: 'where'
+										replace :arguments, with: hash_params
+										insert '.last', at: 'end'
+									end
+								end
+
+								# find_by_email_and_active(email, true) => find_by(email: email, active: true)
+								with_node node_type: 'send', message: /^find_by_/ do
+									if :find_by_id == node.message
+										replace :message, with: 'find_by'
+										replace :arguments, with: 'id: {{arguments}}'
+									elsif :find_by_sql != node.message
+										hash_params = dynamic_finder_to_hash('find_by_')
+										if hash_params
+											replace :message, with: 'find_by'
+											replace :arguments, with: hash_params
+										end
+									end
+								end
+							end
+						end
+					</code></pre>
+				</section>
+				<section>
+					<pre><code class="hljs ruby" data-trim>
+						Synvert::Rewriter.new 'rails', 'upgrade_3_1_to_3_2' do
+							within_files 'vendor/plugins' do
+								warn 'Rails::Plugin is deprecated and will be removed in Rails 4.0. '\
+											 'Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies.'
+							end
+						end
+					</code></pre>
+					<aside class="notes">
+						不替换的 linter
+					</aside>
+				</section>
+				<section>
+					<h2>依赖检查</h2>
+					<pre><code class="hljs ruby" data-trim>
+						if_ruby '3.0.0'
+
+						if_gem 'rails', '~> 6.0.0'
+					</code></pre>
+				</section>
+				<section>
+					<h2>文件处理</h2>
+					<pre><code class="hljs ruby" data-trim>
+						add_file 'app/models/application_record.rb', <<~EOS
+							class ApplicationRecord < ActiveRecord::Base
+								self.abstract_class = true
+							end
+						EOS
+
+						remove_file 'config/initializers/secret_token.rb'
+					</code></pre>
+				</section>
+				<section>
+					<h2>Snippet 组合</h2>
+					<pre><code class="hljs ruby" data-trim>
+						add_snippet 'minitest', 'assert_empty'
+
+						add_snippet 'minitest/assert_instance_of'
+
+						add_snippet '/Users/flyerhzm/.synvert-ruby/lib/minitest/assert_match.rb'
+
+						add_snippet 'https://github.com/xinminlabs/synvert-snippets-ruby/blob/main/lib/minitest/assert_silent.rb'
+					</code></pre>
+				</section>
+				<section>
+					<h2>Synvert 命令行</h2>
+					<pre data-fullscreen="true"><code class="hljs bash" data-trim>
+					  synvert-ruby --run rspec/use_new_syntax
+
+					  synvert-ruby --run ~/.synvert-ruby/lib/rspec/use_new_syntax.rb
+
+					  synvert-ruby --run https://raw.githubusercontent.com/xinminlabs/synvert-snippets-ruby/master/lib/rspec/use_new_syntax.rb
+					</code></pre>
+				</section>
+				<section>
+					<pre data-center>
+--------------------------------------------------------------
+| ----------------------   ---------------   --------------- |
+| | Synvert VSCode Ext |   | Synvert GUI |   | Synvert Web | |
+| ----------------------   ---------------   --------------- |
+--------------------------------------------------------------
+                       /|\                    /|\
+                       |                      |
+--------------------     ---------------        ---------------
+| Synvert Snippets | --- | Synvert CLI |        | Synvert API |
+--------------------     ---------------        ---------------
+/|\
+|
+----------------
+| Synvert Core |
+----------------
+¯¯/|           |\¯¯
+/               \
+--------------    -----------------
+| Node Query |    | Node Mutation |
+--------------    -----------------
+|\¯¯           ¯¯/|
+\             /
+---------------
+|     AST     |
+---------------
+/|\
+|
+---------------
+| Source Code |
+---------------
+					</pre>
+				</section>
+				<section>
+					<h2>Synvert GUI</h2>
+				</section>
+				<section>
+					<h3>运行 Snippet</h3>
+					<img src="img/run-snippet.png" />
+				</section>
+				<section>
+					<h3>自动生成 Snippet</h3>
+					<img src="img/generate-snippet.png" width="60%" />
+				</section>
+				<section>
+					<h3>显示 Snippets</h3>
+					<img src="img/list-snippets.png" width="40%" />
+				</section>
+				<section>
+					<h3>演示</h3>
+				</section>
+				<section>
+					<h2>Synvert VSCode Extension</h2>
+				</section>
+				<section data-background="img/vscode-extension.png" data-background-size="contain">
+				</section>
+				<section>
+					<h2>Synvert Web (Playground)</h2>
+				</section>
+				<section>
+					<h2>Synvert Javascript</h2>
+					<pre data-fullscreen="true"><code class="hljs javascript" data-trim><script type="text/template">
+						new Synvert.Rewriter("typescript", "array-type", () => {
+							configure({ parser: Synvert.Parser.TYPESCRIPT });
+
+							// const z: Array<string|number> = ['a', 'b'];
+							// =>
+							// const z: (string|number)[] = ['a', 'b'];
+							withinFiles(Synvert.ALL_TS_FILES, function () {
+								findNode(
+									`.TypeReference
+										[typeName.escapedText=Array]
+										[typeArguments.0=.UnionType]`,
+									() => {
+										replaceWith("({{typeArguments}})[]");
+									}
+								);
+							});
+						});
+					</script></code></pre>
+				</section>
+				<section>
+					<h2>Css/Less/Sass/Scss</h2>
+					<pre data-fullscreen="true"><code class="hljs javascript" data-trim>
+						new Synvert.Rewriter("sass", "convert-to-scss", () => {
+							configure({ parser: Synvert.Parser.GONZALES_PE });
+
+							withinFiles(Synvert.ALL_SASS_FILES, function () {
+								findNode(".atrule .string", () => { insert(";", { at: "end" }); });
+
+								findNode(".declaration, .include", () => { insert(";", { at: "end", conflictPosition: -99 }); });
+
+								findNode(".mixin .operator", () => { replaceWith("@mixin "); });
+
+								findNode(".include .operator", () => { replaceWith("@include "); });
+
+								findNode(".mixin", () => {
+									const conflictPosition = -this.currentNode.start.column;
+									insert(" {", { at: "end", to: "arguments" });
+									insertAfter("}", {
+										to: "block",
+										newLinePosition: "after",
+										conflictPosition,
+									});
+								});
+
+								findNode(".ruleset", () => {
+									const conflictPosition = -this.currentNode.start.column;
+									insert(" {", { at: "end", to: "selector" });
+									insertAfter("}", {
+										to: "block",
+										newLinePosition: "before",
+										conflictPosition,
+									});
+								});
+							});
+
+							renameFile(Synvert.ALL_SASS_FILES, (filePath) => filePath.replace(/\.sass$/, ".scss"));
+						});
+
+					</code></pre>
+				</section>
+				<section>
+					<h2>联系我们</h2>
+					<p><a href="https://synvert.net/contact_us/" target="_blank">https://synvert.net/contact_us</a></p>
+				</section>
+				<section>
+					<h2>谢谢</h2>
+					<br/>
+					<p>提问？</p>
+				</section>
 			</div>
 		</div>
 
@@ -31,7 +1269,8 @@
 			// - https://revealjs.com/config/
 			Reveal.initialize({
 				hash: true,
-
+				width: '100%',
+				height: '100%',
 				// Learn about plugins: https://revealjs.com/plugins/
 				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
 			});

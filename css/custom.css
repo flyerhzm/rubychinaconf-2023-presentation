@@ -1,0 +1,13 @@
+.reveal table[data-fullscreen="true"] {
+  width: 100%;
+}
+
+.reveal pre[data-fullscreen="true"] {
+  width: 100%;
+}
+.reveal pre[data-fullscreen="true"] code {
+  max-height: none;
+}
+.reveal pre[data-center] {
+  text-align: center;
+}
