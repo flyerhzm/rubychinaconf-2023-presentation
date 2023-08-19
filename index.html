@@ -28,10 +28,6 @@
 					<p>抽象语法树（Abstract Syntax Tree）</p>
 					<aside class="notes">
 						AST（抽象语法树）是在编程语言处理中常用的一种数据结构。它是源代码的抽象表示，用于在计算机程序的语法结构上进行分析和处理。
-						<br/>
-						在计算机编程中，源代码是人类可读的形式，但计算机需要将其转换为能够理解和处理的形式。这个转换过程涉及将源代码解析成更结构化、更抽象的表示，这就是抽象语法树。
-						<br/>
-						抽象语法树是源代码的一种层次化表示，它通过使用树形结构来表示代码的语法结构。每个节点代表代码中的一个语法元素，如变量、函数、运算符、控制流语句等。
 					</aside>
 				</section>
 				<section>
@@ -65,6 +61,9 @@
 							</td>
 						</tr>
 					</table>
+					<aside class="notes">
+						抽象语法树通过使用树形结构来表示代码的语法结构。每个节点代表代码中的一个语法元素，如变量、函数、运算符、控制流语句等。
+					</aside>
 				</section>
 				<section>
 					<img src="img/ast-example.png" />
@@ -79,46 +78,8 @@
 					<aside class="notes">
 						AST 在编程语言处理中有着广泛的应用，例如编译器、解释器、代码静态分析工具等都需要使用 AST 来理解和处理代码。
 						<br/>
-						AST 使得代码的分析、优化和重构等任务更容易实现，因为它提供了一个结构化的视图来遍历和操作代码的语法结构。
+						AST 使得代码的分析、优化和重构等任务更容易实现。
 					</aside>
-				</section>
-				<section>
-					<h2>为什么用 AST?</h2>
-					<ul>
-						<li>精确的查找</li>
-					</ul>
-					<pre><code class="hljs ruby" data-trim>
-						# match puts
-						puts "hello world"
-						puts"hello world"
-						puts("hello world")
-						puts(
-							"hello world"
-						)
-						puts\
-							"hello world"
-					</code></pre>
-				</td>
-				<td>
-					<pre><code class="hljs ruby" data-trim>
-						# not match puts
-						'puts "hello world"'
-						<<~HEREDOC
-							puts "hello world"
-						HEREDOC
-						custom_puts "hello world"
-					</code></pre>
-				</section>
-				<section>
-					<h2>为什么用 AST?</h2>
-					<ul>
-						<li>实现复杂的查找替换</li>
-						<ul>
-							<li>查找 hash 中健值对一致的并删除值</li>
-							<li>查找 hash rocket 语法并替换为新的 hash 语法</li>
-							<li>查找 minitest 的没有调用 super 的 setup 方法并插入 super 语句</li>
-						</ul>
-					</ul>
 				</section>
 				<section>
 					<h2>哪些 Ruby 工具使用 AST ？</h2>
@@ -216,6 +177,28 @@
 					</aside>
 				</section>
 				<section>
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
+						foobar = { foo: foo, bar: bar }
+
+						group([
+							"foobar",
+							" = ",
+							group([
+								"{",
+								indent([
+									line,
+									group(["foo:", indent([line, "foo"])]),
+									",",
+									line,
+									group(["bar:", indent([line, "bar"])]),
+								]),
+								line,
+								"}",
+							]),
+						])
+					</code></pre>
+				</section>
+				<section>
 					<h2>Linter 如何工作 ？</h2>
 					<aside class="notes">
 						不带修复
@@ -290,12 +273,6 @@
 							end
 						end
 					</code></pre>
-				</section>
-				<section>
-					<img src="img/synvert-demo1.png" width="40%" />
-					&nbsp;
-					&nbsp;
-					<img src="img/synvert-demo2.png" width="40%" />
 				</section>
 				<section>
 					<h2>源代码转换成 AST</h2>
@@ -399,7 +376,7 @@
 						<br/>
 						先使用 Lex 定义词法规则，将源代码拆分为 Tokens。然后使用 Yacc 定义语法规则，将 Tokens 组织成 AST 或其他中间表示形式。最后，根据生成的词法分析器和语法分析器，可以将输入的源代码转换为抽象语法树，供后续的代码生成、优化和执行阶段使用。
 						<br/>
-						Rex 用于构建词法分析器，而 Racc 用于构建语法分析器，从而实现完整的编译器前端。通过这些工具，开发者可以定义自定义编程语言或 DSL，并生成解析器来处理源代码。
+						Rex 用于构建词法分析器，而 Racc 用于构建语法分析器。通过这些工具，开发者可以定义自定义编程语言或 DSL，并生成解析器来处理源代码。
 					</aside>
 				</section>
 				<section>
@@ -541,7 +518,7 @@
 					<code>.send[reciever=FactoryBot][message=create]</code>
 				</section>
 				<section>
-					<pre data-fullscreen="true"><code class="hljs ruby" data-trim data-line-numbers="6-14">
+					<pre data-fullscreen="true"><code class="hljs ruby" data-trim data-line-numbers="6-10">
 						class NodeQueryParser
 							token tNODE_TYPE tKEY tIDENTIFIER_VALUE tOPEN_ATTRIBUTE tCLOSE_ATTRIBUTE tOPERATOR
 							rule
@@ -568,7 +545,7 @@
 					<code>.send[arguments.first=:user][arguments.last=true]</code>
 				</section>
 				<section>
-					<pre data-fullscreen="true"><code class="hljs text" data-trim data-line-numbers="8-16,27-35">
+					<pre data-fullscreen="true"><code class="hljs text" data-trim data-line-numbers="8-16,26-33">
 						class NodeQueryLexer
 						macros
 							NODE_TYPE                /\.[a-zA-Z]+/
@@ -594,7 +571,6 @@
 						:KEY        /#{IDENTIFIER}/               { [:tKEY, text] }
 						:VALUE      /\s+/
 						:VALUE      /#{CLOSE_ATTRIBUTE}/          { @state = nil; [:tCLOSE_ATTRIBUTE, text] }
-						:VALUE      /#{IDENTIFIER_VALUE}/         { [:tIDENTIFIER_VALUE, text] }
 						:VALUE      /#{NIL}/                      { [:tNIL, nil] }
 						:VALUE      /#{TRUE}/                     { [:tBOOLEAN, true] }
 						:VALUE      /#{FALSE}/                    { [:tBOOLEAN, false] }
@@ -603,6 +579,7 @@
 						:VALUE      /#{INTEGER}/                  { [:tINTEGER, text.to_i] }
 						:VALUE      /#{DOUBLE_QUOTE_STRING}/      { [:tSTRING, text[1...-1]] }
 						:VALUE      /#{SINGLE_QUOTE_STRING}/      { [:tSTRING, text[1...-1]] }
+						:VALUE      /#{IDENTIFIER_VALUE}/         { [:tIDENTIFIER_VALUE, text] }
 						end
 					</code></pre>
 				</section>
@@ -669,16 +646,6 @@
 					<pre><code class="hljs text" data-trim>
 						# NQL
 						'.send[receiver=nil][message IN (puts p)]'
-					</code></pre>
-				</section>
-				<section>
-					<h2>查找参数是两个 string 的方法调用</h2>
-					<pre><code class="hljs ruby" data-trim>
-						'slug from title'.gsub(' ', '_')
-					</code></pre>
-					<pre><code class="hljs text" data-trim>
-						# NQL
-						'.send[message=gsub][arguments.size=2][arguments.0=.str][arguments.-1=.str]'
 					</code></pre>
 				</section>
 				<section>
@@ -755,24 +722,6 @@
 						1. 直接在 AST 上修改，然后用类似 formatter 的工具重新生成源代码。直接，但是不灵活，生成的代码和原来的代码需要遵循一致的规则。
 						2. 通过 AST Node 获取源代码的位置信息，然后在源代码上修改。方便实现 sandbox 的功能，可以在实际修改之前查看需要修改的内容。
 					</aside>
-				</section>
-				<section>
-					<pre><code class="hljs text" data-trim>
-						before_filter :load_user
-						|-----------|
-									|
-								替换为 before_action # code[0...'before_filter'.length] = 'before_action'
-
-																				open('http://test.com')
-																			/|\
-																			 |
-																			插入 URI. # code[0...0] = 'URI.'
-
-																																	FactoryBot.create(:user)
-																																	|---------|
-																																			|
-																																		 删除 # code[0...'FactoryBot.'.length] = ''
-					</code></pre>
 				</section>
 				<section>
 					<h2>replace_with</h2>
@@ -1031,7 +980,7 @@
 
 							within_files Synvert::ALL_RUBY_FILES + Synvert::ALL_RAKE_FILES do
 								# find_all_by_email_and_active(email, true) => where(email: email, active: true)
-								with_node node_type: 'send', message: /^find_all_by_/ do
+								find_node '.send[message=~/^find_all_by_/]' do
 									hash_params = dynamic_finder_to_hash('find_all_by_')
 									if hash_params
 										replace :message, with: 'where'
@@ -1043,7 +992,7 @@
 				<section>
 					<pre data-fullscreen="true"><code class="hljs ruby" data-trim>
 								# find_last_by_email_and_active(email, true) => where(email: email, active: true).last
-								with_node node_type: 'send', message: /^find_last_by_/ do
+								find_node '.send[message=~/^find_last_by_/]' do
 									hash_params = dynamic_finder_to_hash('find_last_by_')
 									if hash_params
 										replace :message, with: 'where'
@@ -1053,7 +1002,7 @@
 								end
 
 								# find_by_email_and_active(email, true) => find_by(email: email, active: true)
-								with_node node_type: 'send', message: /^find_by_/ do
+								find_node '.send[message=~/^find_by_/]' do
 									if :find_by_id == node.message
 										replace :message, with: 'find_by'
 										replace :arguments, with: 'id: {{arguments}}'
@@ -1067,27 +1016,6 @@
 								end
 							end
 						end
-					</code></pre>
-				</section>
-				<section>
-					<pre><code class="hljs ruby" data-trim>
-						Synvert::Rewriter.new 'rails', 'upgrade_3_1_to_3_2' do
-							within_files 'vendor/plugins' do
-								warn 'Rails::Plugin is deprecated and will be removed in Rails 4.0. '\
-											 'Instead of adding plugins to vendor/plugins use gems or bundler with path or git dependencies.'
-							end
-						end
-					</code></pre>
-					<aside class="notes">
-						不替换的 linter
-					</aside>
-				</section>
-				<section>
-					<h2>依赖检查</h2>
-					<pre><code class="hljs ruby" data-trim>
-						if_ruby '3.0.0'
-
-						if_gem 'rails', '~> 6.0.0'
 					</code></pre>
 				</section>
 				<section>
@@ -1163,7 +1091,7 @@
 				</section>
 				<section>
 					<h3>运行 Snippet</h3>
-					<img src="img/run-snippet.png" />
+					<img src="img/run-snippet.png" width="80%" />
 				</section>
 				<section>
 					<h3>自动生成 Snippet</h3>
@@ -1177,8 +1105,7 @@
 					<h3>演示</h3>
 				</section>
 				<section>
-					<h2>Synvert VSCode Extension</h2>
-				</section>
+					<h</section>
 				<section data-background="img/vscode-extension.png" data-background-size="contain">
 				</section>
 				<section>
